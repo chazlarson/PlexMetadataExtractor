@@ -215,7 +215,7 @@ function processMovie(rootaddr, url){
             var arturl = data.MediaContainer.Video[i].$.art;
             if(data.MediaContainer.Video[i].Media !== undefined)
               for(var j=0;j<data.MediaContainer.Video[i].Media.length;j++){
-                if(data.MediaContainer.Video[i].Media.optimizedForStreaming === undefined || data.MediaContainer.Video[i].Media.optimizedForStreaming == 0){
+                if(data.MediaContainer.Video[i].Media[j].$.optimizedForStreaming === undefined || data.MediaContainer.Video[i].Media[j].$.optimizedForStreaming == 0){
                   for(var k=0;k<data.MediaContainer.Video[i].Media[j].Part.length;k++){
                     if(config.savemeta){
                       if(!fs.existsSync(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.meta.xml') || config.overwriteExisting){
@@ -235,7 +235,7 @@ function processMovie(rootaddr, url){
     }
   });
 }
-function processSeries(url){
+function processSeries(rootaddr, url){
 
 }
 
