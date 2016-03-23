@@ -87,6 +87,44 @@ var libraryquestions = [
   }
 ]
 
+var movielibraryquestions = [
+  {
+    type: "confirm",
+    name: "moviesinownfolder",
+    message: "Are all movies in their own folder?",
+    default: true,
+    when: function(answers){
+      return answers.processLibrary;
+    }
+  },
+  {
+    type: "confirm",
+    name: "savefolderposter",
+    message: "Save poster.jpg from thumbnail into containing folder?",
+    default: true,
+    when: function(answers){
+      return answers.processLibrary && answers.moviesinownfolder
+    }
+  },
+  {
+    type: "confirm",
+    name: "savefolderthumb",
+    message: "Save folder.jpg from thumbnail into containing folder?",
+    when: function(answers){
+      return answers.processLibrary && answers.moviesinownfolder
+    }
+  },
+  {
+    type: "confirm",
+    name: "savefolderart",
+    message: "Save art.jpg from artwork into containing folder?",
+    when: function(answers){
+      return answers.processLibrary && answers.moviesinownfolder
+    }
+  }
+
+]
+
 // TODO: Decisions on items in own folder
 // TODO: Improved progress output
 // TODO: Improved config questionaire
@@ -190,7 +228,10 @@ function doScrape(){
                   if(!libraries[lib.key]){
                     libraryconfigupdated = true;
                     console.log(chalk.bgBlue.white(" INFO ") + chalk.bold(" New libray discovered \"" + lib.title + "\""))
-                    inquirer.prompt(libraryquestions, function(answers){
+                    var thislibquestions = libraryquestions.slice();
+                    if(lib.type == "movie") thislibquestions = thislibquestions.concat(movielibraryquestions);
+
+                    inquirer.prompt(thislibquestions, function(answers){
                       libraries[lib.key] = answers;
                       itemcallback();
                     });
@@ -208,7 +249,12 @@ function doScrape(){
                       if(answers.saveLibraryConfig){
                         saveLibraryConfig(libraries);
                       }
+                      async.each(libs, function(lib){
 
+                          if(libraries[lib.key].processLibrary){
+                            processLibrary(rootaddr, lib.key, lib.type, lib.title);
+                          }
+                      });
                     });
                   }else{
                     async.each(libs, function(lib){
@@ -222,7 +268,7 @@ function doScrape(){
 
               });
             }else{
-              console.log('Failed to discover libraries, arborted!')
+              console.log(chalk.bgRed.black(" ERR  ") + chalk.bold('Failed to discover libraries, arborted!'));
             }
 
 
@@ -296,8 +342,22 @@ function processMovie(rootaddr, url){
                         saveArt(rootaddr + arturl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.art.jpg', videotitle);
                       }
                     }
+                    if(libraries[data.MediaContainer.$.librarySectionID].savefolderposter){
+                      if(!fs.existsSync('poster.jpg') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
+                        savePoster(rootaddr + thumburl, path.join(path.dirname(data.MediaContainer.Video[i].Media[j].Part[k].$.file), 'poster.jpg'), videotitle);
+                      }
+                    }
+                    if(libraries[data.MediaContainer.$.librarySectionID].savefolderthumb){
+                      if(!fs.existsSync('folder.jpg') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
+                        savePoster(rootaddr + thumburl, path.join(path.dirname(data.MediaContainer.Video[i].Media[j].Part[k].$.file), 'folder.jpg'), videotitle);
+                      }
+                    }
+                    if(libraries[data.MediaContainer.$.librarySectionID].savefolderart){
+                      if(!fs.existsSync('art.jpg') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
+                        saveArt(rootaddr + arturl, path.join(path.dirname(data.MediaContainer.Video[i].Media[j].Part[k].$.file), 'art.jpg'), videotitle);
+                      }
+                    }
 
-                    saveArt(rootaddr + arturl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.art.jpg', videotitle);
                   }
                 }
             }
