@@ -7,7 +7,7 @@ var fs = require('fs');
 var path = require('path');
 var request = require('request');
 var parseString = require('xml2js').parseString;
-var term = require('node-terminal');
+var chalk = require('chalk');
 
 var inquirer = require("inquirer");
 
@@ -39,48 +39,6 @@ var configquestions = [
       }
       return true;
     }
-  },
-  {
-    type: "confirm",
-    name: "overwriteExisting",
-    message: "Overwrite existing files?",
-    default: false
-  },
-  {
-    type: "confirm",
-    name: "savemeta",
-    message: "Save metadata alongside media files?",
-    default: true
-  },
-  {
-    type: "confirm",
-    name: "savethumbs",
-    message: "Save thumbnails alongside media files?",
-    default: true
-  },
-  {
-    type: "confirm",
-    name: "saveart",
-    message: "Save artwork alongside media files?",
-    default: true
-  },
-  {
-    type: "confirm",
-    name: "savefolderposter",
-    message: "Save poster to containing folder?",
-    default: true
-  },
-  {
-    type: "confirm",
-    name: "savefolderart",
-    message: "Save artwork to containing folder?",
-    default: true
-  },
-  {
-    type: "confirm",
-    name: "savefolderthumb",
-    message: "Save additional folder.jpg from thumb?",
-    default: true
   }
 ];
 
@@ -90,8 +48,43 @@ var libraryquestions = [
     name: "processLibrary",
     message: "Do you want to process this library?",
     default: true
+  },
+  {
+    type: "confirm",
+    name: "overwriteExisting",
+    message: "Overwrite existing files?",
+    default: false,
+    when: function(answers){
+      return answers.processLibrary;
+    }
+  },
+  {
+    type: "confirm",
+    name: "savemeta",
+    message: "Save metadata alongside each media file?",
+    default: true,
+    when: function(answers){
+      return answers.processLibrary;
+    }
+  },
+  {
+    type: "confirm",
+    name: "savethumbs",
+    message: "Save thumbnail alongside each media file?",
+    default: true,
+    when: function(answers){
+      return answers.processLibrary;
+    }
+  },
+  {
+    type: "confirm",
+    name: "saveart",
+    message: "Save artwork alongside each media file?",
+    default: true,
+    when: function(answers){
+      return answers.processLibrary;
+    }
   }
-
 ]
 
 // TODO: Decisions on items in own folder
@@ -117,7 +110,7 @@ if(fs.existsSync('config.json'))
 if(configstring != ''){
   config = JSON.parse(configstring);
 }else{
-  console.log('No configuration settings found!');
+  console.log(chalk.bgYellow.black(" WARN ") + chalk.bold(' No configuration settings found!'));
   configurationMode = true;
 }
 
@@ -133,18 +126,18 @@ if(librariesstring != ''){
 function saveConfig(configjson){
   fs.writeFile('config.json', JSON.stringify(configjson), function(err){
     if(err)
-      console.log(err);
+      console.log(chalk.brRed.white(" ERR  ") + " " + err);
 
-    console.log('Configuration file saved!')
+    console.log(chalk.bgBlue(" INFO ") + chalk.bold(" Configuration saved!"));
   });
 }
 
 function saveLibraryConfig(libraryjson){
   fs.writeFile('libraries.json', JSON.stringify(libraryjson), function(err){
     if(err)
-      console.log(err);
+      console.log(chalk.brRed.white(" ERR  ") + " " + err);
 
-    console.log("Library configuration saved!")
+    console.log(chalk.bgBlue(" INFO ") + chalk.bold(" Library configuration saved!"));
   });
 }
 
@@ -159,6 +152,7 @@ process.argv.forEach(function (val, index, array) {
 
 // configuration mode - read settings from user input
 if(configurationMode){
+  console.log(chalk.bgBlue(" INFO ") + chalk.bold(" Entering configuration mode for PlexMetadataExtractor"))
   inquirer.prompt(configquestions, function(answers){
     saveConfig(answers);
     config = answers;
@@ -179,7 +173,7 @@ function doScrape(){
       // initial request to test server connection
       if(!error && response.statusCode == 200){
 
-        console.log('Discovering Libraries');
+        console.log(chalk.bgBlue(" INFO ") + chalk.bold(' Discovering Libraries'));
 
         request(rootaddr + '/library/sections',
           function(error, response, body){
@@ -195,7 +189,7 @@ function doScrape(){
                 async.eachSeries(libs, function(lib, itemcallback){
                   if(!libraries[lib.key]){
                     libraryconfigupdated = true;
-                    console.log("New library discoveed \"" + lib.title + "\"")
+                    console.log(chalk.bgBlue.white(" INFO ") + chalk.bold(" New libray discovered \"" + lib.title + "\""))
                     inquirer.prompt(libraryquestions, function(answers){
                       libraries[lib.key] = answers;
                       itemcallback();
@@ -221,7 +215,6 @@ function doScrape(){
 
                         if(libraries[lib.key].processLibrary){
                           processLibrary(rootaddr, lib.key, lib.type, lib.title);
-
                         }
                     });
                   }
@@ -285,15 +278,25 @@ function processMovie(rootaddr, url){
               for(var j=0;j<data.MediaContainer.Video[i].Media.length;j++){
                 if(data.MediaContainer.Video[i].Media[j].$.optimizedForStreaming === undefined || data.MediaContainer.Video[i].Media[j].$.optimizedForStreaming == 0){
                   for(var k=0;k<data.MediaContainer.Video[i].Media[j].Part.length;k++){
-                    if(config.savemeta){
-                      if(!fs.existsSync(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.meta.xml') || config.overwriteExisting){
+                    if(libraries[data.MediaContainer.$.librarySectionID].savemeta){
+                      if(!fs.existsSync(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.meta.xml') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
                         fs.writeFile(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.meta.xml', body, function(){
                           console.log("Saved metadata for " + videotitle);
 
                         });
                       }
                     }
-                    savePoster(rootaddr + thumburl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.thumb.jpg', videotitle);
+                    if(libraries[data.MediaContainer.$.librarySectionID].savethumbs){
+                      if(!fs.existsSync(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.thumb.jpg') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
+                        savePoster(rootaddr + thumburl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.thumb.jpg', videotitle);
+                      }
+                    }
+                    if(libraries[data.MediaContainer.$.librarySectionID].saveart){
+                      if(!fs.existsSync(data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.art.jpg') || libraries[data.MediaContainer.$.librarySectionID].overwriteExisting){
+                        saveArt(rootaddr + arturl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.art.jpg', videotitle);
+                      }
+                    }
+
                     saveArt(rootaddr + arturl, data.MediaContainer.Video[i].Media[j].Part[k].$.file + '.art.jpg', videotitle);
                   }
                 }
@@ -309,52 +312,18 @@ function processSeries(rootaddr, url){
 }
 
 function savePoster(url, filepath, videotitle){
-  if(config.savethumbs){
-    if(!fs.existsSync(filepath) || config.overwriteExisting){
-      request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
-        console.log("Saved Thumbnail for " + videotitle);
-      });
-    }
-  }
-  if(config.savefolderposter){
-    var posterpath = path.join(path.dirname(filepath), 'poster.jpg');
-    if(!fs.existsSync(posterpath) || config.overwriteExisting){
-      request(url).pipe(fs.createWriteStream(posterpath)).on('close', function(){
-        console.log("Saved Poster for " + videotitle);
-      });
-    }
-  }
-  if(config.savefolderthumb){
-    var folderpath = path.join(path.dirname(filepath), 'folder.jpg');
-    if(!fs.existsSync(folderpath) || config.overwriteExisting){
-      request(url).pipe(fs.createWriteStream(folderpath)).on('close', function(){
-        console.log("Saved Folder thumbnail for " + videotitle);
-      });
-    }
-  }
-
+    request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
+      console.log("Saved Thumbnail for " + videotitle);
+    });
 }
+
+
 function saveArt(url, filepath, videotitle){
-  request(url, function(error, response, body){
-    if(config.saveart){
-      if(!fs.existsSync(filepath) || config.overwriteExisting){
-        request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
-          console.log("Saved Artwork for " + videotitle);
-        });
-      }
-    }
-    if(config.savefolderart){
-      var artpath = path.join(path.dirname(filepath), 'art.jpg');
-      if(!fs.existsSync(artpath) || config.overwriteExisting){
-
-        request(url).pipe(fs.createWriteStream(artpath)).on('close', function(){
-          console.log("Saved Folder artwork for " + videotitle);
-        });
-      }
-    }
-
+  request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
+    console.log("Saved Artwork for " + videotitle);
   });
 }
+
 
 
 function logerr(err){
