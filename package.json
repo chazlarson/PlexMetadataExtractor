@@ -9,6 +9,7 @@
   "author": "avalonprojects",
   "license": "ISC",
   "dependencies": {
+    "inquirer": "^0.12.0",
     "node-terminal": "^0.1.1",
     "request": "^2.69.0",
     "xml2js": "^0.4.16"

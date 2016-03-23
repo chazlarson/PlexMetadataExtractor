@@ -9,6 +9,89 @@ var request = require('request');
 var parseString = require('xml2js').parseString;
 var term = require('node-terminal');
 
+var inquirer = require("inquirer");
+
+var configquestions = [
+  {
+    type: "input",
+    name: "address",
+    message: "Plex Address",
+    default: "127.0.0.1",
+    validate: function(input){
+      // TODO: improve address validation
+      var ipPattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      var arrMatches = input.match(ipPattern);
+      if(arrMatches === null){
+        return "Please enter a valid IPv4 Address";
+      }
+
+      return true;
+    }
+  },
+  {
+    type: "input",
+    name: "port",
+    message: "Port",
+    default: "32400",
+    validate: function(input){
+      if(isNaN(parseInt(input))){
+        return "Please enter a valid port number";
+      }
+      return true;
+    }
+  },
+  {
+    type: "confirm",
+    name: "overwriteExisting",
+    message: "Overwrite existing files?",
+    default: false
+  },
+  {
+    type: "confirm",
+    name: "savemeta",
+    message: "Save metadata alongside media files?",
+    default: true
+  },
+  {
+    type: "confirm",
+    name: "savethumbs",
+    message: "Save thumbnails alongside media files?",
+    default: true
+  },
+  {
+    type: "confirm",
+    name: "saveart",
+    message: "Save artwork alongside media files?",
+    default: true
+  },
+  {
+    type: "confirm",
+    name: "savefolderposter",
+    message: "Save poster to containing folder?",
+    default: true
+  },
+  {
+    type: "confirm",
+    name: "savefolderart",
+    message: "Save artwork to containing folder?",
+    default: true
+  },
+  {
+    type: "confirm",
+    name: "savefolderthumb",
+    message: "Save additional folder.jpg from thumb?",
+    default: true
+  }
+];
+
+// TODO: Decisions on items in own folder
+// TODO: Improved progress output
+// TODO: Improved config questionaire
+// TODO: Arguments to override config
+// TODO: Process TV Series Libraries
+// TODO: Process Music Libraries
+// TODO: Process Photo Libraries
+// TODO: Save extra library info to allow more question asking
 
 var configurationMode = false;
 
@@ -45,96 +128,10 @@ process.argv.forEach(function (val, index, array) {
 
 // configuration mode - read settings from user input
 if(configurationMode){
-  var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  rl.question("Plex address [127.0.0.1]: ", function(address){
-    if(address == ""){
-      //use the default
-      config.address = "127.0.0.1";
-    }else{
-      config.address = address;
-    }
-
-
-    rl.question("Port [32400]: ", function(port){
-      if(port == ""){
-        config.port = "32400";
-      }else{
-        config.port = port;
-      }
-
-      rl.question("Overwrite existing Files? [No]", function(overwrite){
-        if(overwrite.toLowerCase() == 'yes' || overwrite.toLowerCase() == 'y'){
-          config.overwriteExisting = true;
-        }else{
-          config.overwriteExisting = false;
-        }
-
-        rl.question("Save metadata? [Yes]", function(savemeta){
-          if(savemeta.toLowerCase() == 'no' || savemeta.toLowerCase() == 'n'){
-            config.savemeta = false;
-          }else{
-            config.savemeta = true;
-          }
-
-          rl.question("Save thumbnails? [Yes]", function(savethumbs){
-            if(savethumbs.toLowerCase() == 'no' || savethumbs.toLowerCase() == 'n'){
-              config.savethumbs = false;
-            }else{
-              config.savethumbs = true;
-            }
-
-            rl.question("Save artwork? [Yes]", function(saveart){
-              if(saveart.toLowerCase() == 'no' || saveart.toLowerCase() == 'n'){
-                config.saveart = false;
-              }else{
-                config.saveart = true;
-              }
-
-              rl.question("Save poster to containing folder? [Yes]", function(savefolderposter){
-                if(savefolderposter.toLowerCase() == 'no' || savefolderposter.toLowerCase() == 'n'){
-                  config.savefolderposter = false;
-                }else{
-                  config.savefolderposter = true;
-                }
-
-                rl.question("Save artwork to containing folder? [Yes]", function(savefolderart){
-                  if(savefolderart.toLowerCase() == 'no' || savefolderart.toLowerCase() == 'n'){
-                    config.savefolderart = false;
-                  }else{
-                    config.savefolderart = true;
-                  }
-
-                  rl.question("Save additional folder.jpg from thumb? [Yes]", function(savefolderthumb){
-                    if(savefolderthumb.toLowerCase() == 'no' || savefolderthumb.toLowerCase() == 'n'){
-                      config.savefolderthumb = false;
-                    }else{
-                      config.savefolderthumb = true;
-                    }
-
-                    rl.close();
-                    saveConfig(config);
-                    doScrape();
-                  });
-                });
-
-
-              });
-            });
-
-
-          });
-
-        });
-
-
-      });
-
-
-    })
+  inquirer.prompt(configquestions, function(answers){
+    saveConfig(answers);
+    config = answers;
+    doScrape();
   });
 
 
@@ -236,6 +233,7 @@ function processMovie(rootaddr, url){
   });
 }
 function processSeries(rootaddr, url){
+  var mediaurl = rootaddr + url;
 
 }
 
