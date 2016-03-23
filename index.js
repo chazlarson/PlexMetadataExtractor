@@ -107,7 +107,7 @@ var libraryquestions = [
 var configurationMode = false;
 
 var config = {};
-var libraries = [];
+var libraries = {};
 
 // load the configuration
 var configstring = '';
@@ -132,10 +132,19 @@ if(librariesstring != ''){
 
 function saveConfig(configjson){
   fs.writeFile('config.json', JSON.stringify(configjson), function(err){
-    if(err != null)
+    if(err)
       console.log(err);
 
     console.log('Configuration file saved!')
+  });
+}
+
+function saveLibraryConfig(libraryjson){
+  fs.writeFile('libraries.json', JSON.stringify(libraryjson), function(err){
+    if(err)
+      console.log(err);
+
+    console.log("Library configuration saved!")
   });
 }
 
@@ -174,8 +183,10 @@ function doScrape(){
 
         request(rootaddr + '/library/sections',
           function(error, response, body){
+
             if(!error && response.statusCode == 200){
               parseString(body, function(err,data){
+                var libraryconfigupdated = false;
                 var libs = []
                 for(var i=0;i<data.MediaContainer.Directory.length;i++){
                   //console.log('Discovered ' + data.MediaContainer.Directory[i].$.title + '...');
@@ -183,23 +194,37 @@ function doScrape(){
                 }
                 async.eachSeries(libs, function(lib, itemcallback){
                   if(!libraries[lib.key]){
+                    libraryconfigupdated = true;
                     console.log("New library discoveed \"" + lib.title + "\"")
                     inquirer.prompt(libraryquestions, function(answers){
                       libraries[lib.key] = answers;
                       itemcallback();
                     });
+                  }else{
+                    itemcallback();
                   }
 
                 }, function(err){
                   if(err){
                     console.log(err);
                   }
-                  async.each(libs, function(lib){
+                  if(libraryconfigupdated){
+                    inquirer.prompt([{type: "confirm", name: "saveLibraryConfig", message: "Save library configuration?", default: true}],
+                    function(answers){
+                      if(answers.saveLibraryConfig){
+                        saveLibraryConfig(libraries);
+                      }
 
-                    if(libraries[lib.key].processLibrary){
-                      processLibrary(rootaddr, lib.key, lib.type, lib.title);
-                    }
-                  });
+                    });
+                  }else{
+                    async.each(libs, function(lib){
+
+                        if(libraries[lib.key].processLibrary){
+                          processLibrary(rootaddr, lib.key, lib.type, lib.title);
+
+                        }
+                    });
+                  }
                 });
 
               });
