@@ -2,7 +2,7 @@
 
 'use strict';
 
-var readline = require('readline');
+var async = require('async');
 var fs = require('fs');
 var path = require('path');
 var request = require('request');
@@ -84,6 +84,16 @@ var configquestions = [
   }
 ];
 
+var libraryquestions = [
+  {
+    type: "confirm",
+    name: "processLibrary",
+    message: "Do you want to process this library?",
+    default: true
+  }
+
+]
+
 // TODO: Decisions on items in own folder
 // TODO: Improved progress output
 // TODO: Improved config questionaire
@@ -92,11 +102,14 @@ var configquestions = [
 // TODO: Process Music Libraries
 // TODO: Process Photo Libraries
 // TODO: Save extra library info to allow more question asking
+// TODO: Library specific configuration
 
 var configurationMode = false;
 
 var config = {};
+var libraries = [];
 
+// load the configuration
 var configstring = '';
 if(fs.existsSync('config.json'))
   configstring = fs.readFileSync('config.json');
@@ -106,6 +119,15 @@ if(configstring != ''){
 }else{
   console.log('No configuration settings found!');
   configurationMode = true;
+}
+
+// load any library configuration
+var librariesstring = ''
+if(fs.existsSync('libraries.json'))
+  librariesstring = fs.readFileSync('libraries.json');
+
+if(librariesstring != ''){
+  libraries = JSON.parse(librariesstring);
 }
 
 function saveConfig(configjson){
@@ -154,10 +176,32 @@ function doScrape(){
           function(error, response, body){
             if(!error && response.statusCode == 200){
               parseString(body, function(err,data){
+                var libs = []
                 for(var i=0;i<data.MediaContainer.Directory.length;i++){
-                  console.log('Discovered ' + data.MediaContainer.Directory[i].$.title + '...');
-                  processLibrary(rootaddr, data.MediaContainer.Directory[i].$.key, data.MediaContainer.Directory[i].$.type, data.MediaContainer.Directory[i].$.title);
+                  //console.log('Discovered ' + data.MediaContainer.Directory[i].$.title + '...');
+                  libs.push({key: data.MediaContainer.Directory[i].$.key, title: data.MediaContainer.Directory[i].$.title, type: data.MediaContainer.Directory[i].$.type});
                 }
+                async.eachSeries(libs, function(lib, itemcallback){
+                  if(!libraries[lib.key]){
+                    console.log("New library discoveed \"" + lib.title + "\"")
+                    inquirer.prompt(libraryquestions, function(answers){
+                      libraries[lib.key] = answers;
+                      itemcallback();
+                    });
+                  }
+
+                }, function(err){
+                  if(err){
+                    console.log(err);
+                  }
+                  async.each(libs, function(lib){
+
+                    if(libraries[lib.key].processLibrary){
+                      processLibrary(rootaddr, lib.key, lib.type, lib.title);
+                    }
+                  });
+                });
+
               });
             }else{
               console.log('Failed to discover libraries, arborted!')
@@ -185,10 +229,12 @@ function processLibrary(rootaddr, librarykey, type, sectionname){
 
           for(var i=0;i<data.MediaContainer.$.size;i++){
             //console.log(data.MediaContainer.Directory[i])
-            processMovie(rootaddr, data.MediaContainer.Video[i].$.key);
+
+              processMovie(rootaddr, data.MediaContainer.Video[i].$.key);
+
           }
         }else{
-          console.log("Ignoring \"" + sectionname + "\" Metadata Extractor is not designed to work with sections of type \"" + type + "\"");
+          console.log("Unfortunately Metadata Extractor is not designed to work with sections of type \"" + type + "\" yet.");
         }
       });
     }else{
@@ -283,4 +329,10 @@ function saveArt(url, filepath, videotitle){
     }
 
   });
+}
+
+
+function logerr(err){
+  if(err)
+    console.log(err);
 }
