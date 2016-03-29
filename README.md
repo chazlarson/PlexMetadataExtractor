@@ -1,9 +1,15 @@
 # PlexMetadataExtractor
 Extract Metadata from Plex Media Server and store it alongside your files.
 
-This NodeJS script was designed to extract image metadata from Plex Media Server with the purpose of providing folder.jpg files to generate folder thumbnails on the Microsoft Windows Operating System.
+This NodeJS script was originally designed to extract image metadata from Plex Media Server with the purpose of providing folder.jpg files to generate folder thumbnails on the Microsoft Windows Operating System.
 
-Currently only Movie Libraries are supported (TV Series will be added later).
+The use case has subsequently been expanded to extract all appropriate metadata, including images.
+
+Currently supports discovery of:
+ - Movie libraries
+ - TV Show libraries
+
+(TV Theme tunes are not currently handled)
 
 No additional processing of xml is performed prior to it being saved.
 

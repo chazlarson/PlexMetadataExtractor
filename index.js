@@ -10,16 +10,17 @@ var path = require("path");
 var progress = require("progress");
 var request = require("request");
 var cursor = require('ansi')(process.stdout)
+var _ = require('lodash');
 
 // TODO: improved error handling
-// TODO: Process TV libraries
+// TODO: TV Theme tunes
 // TODO: Process Music libraries
 // TODO: Process Photo libraries
 
 // modify this value to allow multiple concurrent API requests
 // note: sending too many requests concurrently has been found to
 //       cause Plex to become unresponsive.
-var throttle = 5;
+var throttle = 1;
 
 var questions = {
   configquestions: [
@@ -85,15 +86,6 @@ var questions = {
       when: function(answers){
         return answers.processLibrary;
       }
-    },
-    {
-      type: "confirm",
-      name: "saveart",
-      message: "Save artwork alongside each media file?",
-      default: true,
-      when: function(answers){
-        return answers.processLibrary;
-      }
     }
   ],
   movielibraryquestions: [
@@ -145,15 +137,6 @@ var questions = {
   tvlibraryquestions: [
     {
       type: "confirm",
-      name: "saveartonpreviousmatch",
-      message: "Save artwork alongside each media file, even when its the same as the series artwork?",
-      default: true,
-      when: function(answers){
-        return answers.processLibrary && answers.saveart;
-      }
-    },
-    {
-      type: "confirm",
       name: "tvseriesinownfolder",
       message: "Are all TV Series in their own folder?",
       default: true,
@@ -172,7 +155,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesposter",
-      message: "Save poster.jpg from thumbnail into the Series folder?",
+      message: "Save show.jpg from thumbnail into the Series folder?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -196,8 +179,8 @@ var questions = {
     },
     {
       type: "confirm",
-      name: "tvseasonsinownfolder",
-      message: "Are all Seasons in their own sub folder?",
+      name: "saveseriesbanner",
+      message: "Save banner.jpg for int the Series folder?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -206,15 +189,34 @@ var questions = {
     {
       type: "confirm",
       name: "saveseasonmeta",
-      message: "Save metadata for season into the Season folder?",
+      message: "Save metadata for season?",
       when: function(answers){
-        return answers.processLibrary && answers.tvseriesinownfolder && answers.tvseasonsinownfolder;
+        return answers.processLibrary && answers.tvseriesinownfolder;
       }
     },
     {
       type: "confirm",
       name: "saveseasonposter",
-      message: "Save poster.jpg from thumbnail into the Season folder?",
+      message: "Save poster for season?",
+      default: true,
+      when: function(answers){
+        return answers.processLibrary && answers.tvseriesinownfolder;
+      }
+    },
+    {
+      type: "confirm",
+      name: "saveseasonart",
+      message: "Save artwork for season?",
+      default: true,
+      when: function(answers){
+        return answers.processLibrary && answers.tvseriesinownfolder;
+      }
+    },
+
+    {
+      type: "confirm",
+      name: "tvseasonsinownfolder",
+      message: "Are all Seasons in their own sub folder?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -225,7 +227,7 @@ var questions = {
       name: "saveseasonfolderthumb",
       message: "Save folder.jpg from thumbnail into the Season folder?",
       when: function(answers){
-        return answers.processLibrary && answers.tvseriesinownfolder;
+        return answers.processLibrary && answers.tvseasonsinownfolder;
       }
     },
   ]
@@ -243,7 +245,8 @@ var discoveryprogress = new progress(
     width: 5,
     total: 1,
     complete: ".",
-    incomplete: " "
+    incomplete: " ",
+    renderThrottle: 500
   }
 );
 
@@ -254,6 +257,7 @@ var processingprogress = new progress(
     incomplete: " ",
     width: 20,
     total: 1,
+    renderThrottle: 500
   }
 )
 
@@ -360,7 +364,7 @@ function doScrape(){
               thislibquestions = thislibquestions.concat(questions.movielibraryquestions);
               break;
             case "show":
-              //thislibquestions = thislibquestions.concat(questions.tvlibraryquestions);
+              thislibquestions = thislibquestions.concat(questions.tvlibraryquestions);
               break;
           }
           inquirer.prompt(thislibquestions, function(answers){
@@ -418,15 +422,17 @@ function processLibrary(rootaddr, librarykey, librarytype, libraryname){
       });
       break;
     case "show":
-      break;
-      makeGetRequestDiscovery(rootaddr + "library/sections/" + librarykey + "/all", function(response, body){
+      makeGetRequestDiscovery(rootaddr + "/library/sections/" + librarykey + "/all", function(response, body){
         parseString(body, function(error, data){
+
           async.each(data.MediaContainer.Directory, function(directory, itemcallback){
+
             processSeries(rootaddr, directory.$.key);
             itemcallback();
           });
         })
       });
+      break;
   }
 }
 
@@ -487,7 +493,179 @@ function processMovie(rootaddr, url){
 }
 
 function processSeries(rootaddr, url){
-  totalactions++;
+
+  makeGetRequestDiscovery(rootaddr + url, function(request, body){
+    parseString(body, function(error, data){
+      async.each(data.MediaContainer.Directory,
+        function(directory, directorycallback){
+
+          if(directory.$.type !== undefined && directory.$.type == "season"){
+            processSeason(rootaddr, directory.$.key);
+          }
+
+          directorycallback();
+        },
+        function(err){
+          // TODO: improved error handling
+        }
+      );
+    });
+  });
+}
+
+function processSeason(rootaddr, url){
+  makeGetRequestDiscovery(rootaddr + url, function(request, body){
+    parseString(body, function(error, data){
+
+      var seasonfolder = "";
+      var seriesfolder = "";
+
+      var librarySectionID = data.MediaContainer.$.librarySectionID;
+
+      var seasonfolders = [];
+
+      async.each(data.MediaContainer.Video,
+        function(video, videocallback){
+
+          var videokey = video.$.key;
+          var thumburl = video.$.thumb;
+          var arturl = video.$.art;
+
+          async.each(video.Media,
+            function(media, mediaitemcallback){
+              if(!media.$.target){
+                // when a media has a target, it is an optimized version!
+                async.each(media.Part,
+                  function(part, partitemcallback){
+
+                    totalactions++;
+
+                    var seasonfolder = path.dirname(part.$.file);
+                    var seriesfolder = seasonfolder;
+                    if(libraries[librarySectionID].tvseasonsinownfolder){
+                      seriesfolder = path.normalize(path.join(seriesfolder, "/.."));
+
+                    }
+                    if(seasonfolders.indexOf(seasonfolder) < 0){
+                      seasonfolders.push(seasonfolder)
+                      downloadseasonassets(rootaddr, video.$.parentKey, seasonfolder);
+                    }
+
+                    if(libraries[librarySectionID].savemeta){
+                      if(!fs.existsSync(part.$.file + ".meta.xml") || libraries[librarySectionID].overwriteExisting){
+                        downloadmetadata(rootaddr + videokey, part.$.file + ".meta.xml");
+                      }
+                    }
+
+                    if(libraries[librarySectionID].savethumbs){
+                      if(!fs.existsSync(part.$.file + ".thumb.jpg") || libraries[librarySectionID].overwriteExisting){
+                        downloadfile(rootaddr + thumburl, part.$.file + ".thumb.jpg");
+                      }
+                    }
+
+
+                    partitemcallback();
+                  }
+                );
+              }
+              mediaitemcallback();
+            }
+          );
+
+
+          videocallback();
+        },
+        function(err){
+          // TODO: improved error handling
+
+
+        }
+      );
+
+    });
+  });
+}
+
+function downloadseasonassets(rootaddr, url, folderpath){
+  makeGetRequestDiscovery(rootaddr + url, function(request, body){
+    parseString(body, function(error, data){
+      var librarySectionID = data.MediaContainer.$.librarySectionID;
+      async.each(data.MediaContainer.Directory, function(directory, callback){
+        var seasonName = directory.$.title;
+            seasonName = seasonName.replace(/[^a-zA-Z0-9]/g, "-")
+        if(libraries[librarySectionID].saveseasonmeta){
+          if(!fs.existsSync(path.join(folderpath, seasonName + ".meta.xml")) || libraries[librarySectionID].overwriteExisting){
+            downloadmetadata(rootaddr + directory.$.key, path.join(folderpath, seasonName + ".meta.xml"));
+          }
+        }
+        if(libraries[librarySectionID].saveseasonfolderthumb){
+          if(!fs.existsSync(path.join(folderpath, "folder.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "folder.jpg"));
+          }
+        }
+        if(libraries[librarySectionID].saveseasonposter){
+
+            if(!fs.existsSync(path.join(folderpath, seasonName + ".jpg")) || libraries[librarySectionID].overwriteExisting){
+              downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, seasonName + ".jpg"));
+            }
+        }
+
+        if(libraries[librarySectionID].saveseasonart){
+          if(!fs.existsSync(path.join(folderpath, seasonName + "-art.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.art, path.join(folderpath, seasonName + "-art.jpg"));
+          }
+        }
+
+        var seriespath = ""
+        if(libraries[librarySectionID].tvseasonsinownfolder){
+          seriespath = path.normalize(path.join(folderpath, "/.."));
+        }else{
+          seriespath = folderpath;
+        }
+
+        downloadseriesassets(rootaddr, directory.$.parentKey, seriespath);
+
+        callback();
+      });
+    });
+  });
+
+}
+function downloadseriesassets(rootaddr, url, folderpath){
+  makeGetRequestDiscovery(rootaddr + url, function(request, body){
+    parseString(body, function(error, data){
+      var librarySectionID = data.MediaContainer.$.librarySectionID;
+      async.each(data.MediaContainer.Directory, function(directory, callback){
+        if(libraries[librarySectionID].saveseriesmeta){
+          if(!fs.existsSync(path.join(folderpath, "show.meta.xml")) || libraries[librarySectionID].overwriteExisting){
+            downloadmetadata(rootaddr + url, path.join(folderpath, "show.meta.xml"));
+          }
+        }
+        if(libraries[librarySectionID].saveseriesposter){
+          if(!fs.existsSync(path.join(folderpath, "show.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "show.jpg"));
+          }
+        }
+        if(libraries[librarySectionID].saveseriesfolderthumb){
+          if(!fs.existsSync(path.join(folderpath, "folder.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "folder.jpg"));
+          }
+        }
+
+        if(libraries[librarySectionID].saveseriesfolderart){
+          if(!fs.existsSync(path.join(folderpath, "art.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.art, path.join(folderpath, "art.jpg"));
+          }
+        }
+        if(libraries[librarySectionID].saveseriesbanner){
+          if(!fs.existsSync(path.join(folderpath, "banner.jpg")) || libraries[librarySectionID].overwriteExisting){
+            downloadfile(rootaddr + directory.$.banner, path.join(folderpath, "banner.jpg"));
+          }
+        }
+
+      });
+    });
+  });
 }
 
 function downloadmetadata(url, filepath){
@@ -515,9 +693,11 @@ function downloadmetadata(url, filepath){
 }
 
 function downloadfile(url, filepath){
+
   var task = {
     message: "",
     execute: function(callback){
+
       request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
         callback();
       });
