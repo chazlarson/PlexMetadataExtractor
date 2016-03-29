@@ -9,7 +9,6 @@ Currently supports discovery of:
  - Movie libraries
  - TV Show libraries
 
-(TV Theme tunes are not currently handled)
 
 No additional processing of xml is performed prior to it being saved.
 

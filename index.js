@@ -180,7 +180,16 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesbanner",
-      message: "Save banner.jpg for int the Series folder?",
+      message: "Save banner.jpg for into the Series folder?",
+      default: true,
+      when: function(answers){
+        return answers.processLibrary && answers.tvseriesinownfolder;
+      }
+    },
+    {
+      type: "confirm",
+      name: "saveseriestheme",
+      message: "Save theme.mp3 for into the Series folder?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -643,26 +652,37 @@ function downloadseriesassets(rootaddr, url, folderpath){
         }
         if(libraries[librarySectionID].saveseriesposter){
           if(!fs.existsSync(path.join(folderpath, "show.jpg")) || libraries[librarySectionID].overwriteExisting){
-            downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "show.jpg"));
+            if(directory.$.thumb !== undefined)
+              downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "show.jpg"));
           }
         }
         if(libraries[librarySectionID].saveseriesfolderthumb){
           if(!fs.existsSync(path.join(folderpath, "folder.jpg")) || libraries[librarySectionID].overwriteExisting){
-            downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "folder.jpg"));
+            if(directory.$.thumb !== undefined)
+              downloadfile(rootaddr + directory.$.thumb, path.join(folderpath, "folder.jpg"));
           }
         }
 
         if(libraries[librarySectionID].saveseriesfolderart){
           if(!fs.existsSync(path.join(folderpath, "art.jpg")) || libraries[librarySectionID].overwriteExisting){
-            downloadfile(rootaddr + directory.$.art, path.join(folderpath, "art.jpg"));
+            if(directory.$.art !== undefined)
+              downloadfile(rootaddr + directory.$.art, path.join(folderpath, "art.jpg"));
           }
         }
         if(libraries[librarySectionID].saveseriesbanner){
           if(!fs.existsSync(path.join(folderpath, "banner.jpg")) || libraries[librarySectionID].overwriteExisting){
-            downloadfile(rootaddr + directory.$.banner, path.join(folderpath, "banner.jpg"));
+            if(directory.$.banner !== undefined)
+              downloadfile(rootaddr + directory.$.banner, path.join(folderpath, "banner.jpg"));
           }
         }
+        if(libraries[librarySectionID].saveseriestheme){
+          if(!fs.existsSync(path.join(folderpath, "theme.mp3")) || libraries[librarySectionID].overwriteExisting){
+            console.log(directory.$.theme);
+            if(directory.$.theme !== undefined)
 
+              downloadfile(rootaddr + directory.$.theme, path.join(folderpath, "theme.mp3"));
+          }
+        }
       });
     });
   });
