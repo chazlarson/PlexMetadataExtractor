@@ -5,10 +5,13 @@ This NodeJS script was originally designed to extract image metadata from Plex M
 
 The use case has subsequently been expanded to extract all appropriate metadata, including images.
 
+The idea is to allow extraction of everything, so please let me know if I've missed something, but allow configuration of exactly what should be saved.
+
+For now configuration must be saved, but command line arguments should be coming soon.
+
 Currently supports discovery of:
  - Movie libraries
  - TV Show libraries
-
 
 No additional processing of xml is performed prior to it being saved.
 
