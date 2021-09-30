@@ -51,6 +51,15 @@ var questions = {
         }
         return true;
       }
+    },
+    {
+      type: "input",
+      name: "token",
+      message: "Token",
+      default: "DECAFBAD-DEADBEEF",
+      validate: function(input){
+        return true;
+      }
     }
   ],
   libraryquestions: [
@@ -352,9 +361,17 @@ function saveLibraryConfiguration(libraryjson){
   });
 }
 
+function addToken(URL)
+{
+  return URL + "?X-Plex-Token=" + config.token
+}
+
 function doScrape(){
   var rootaddr = "http://" + config.address + ":" + config.port;
 
+  // http://[PMS_IP_Address]:32400/?X-Plex-Token=YourTokenGoesHere
+
+  console.log(chalk.bgBlue(" INFO ") + chalk.bold(" " + rootaddr));
   console.log(chalk.bgBlue(" INFO ") + chalk.bold(" Discovering Libraries"));
   makeGetRequest(rootaddr + '/library/sections', function(response, body){
     parseString(body, function(error, data){
@@ -446,7 +463,6 @@ function processLibrary(rootaddr, librarykey, librarytype, libraryname){
 }
 
 function processMovie(rootaddr, url){
-
   makeGetRequestDiscovery(rootaddr + url, function(response, body){
     parseString(body, function(error, data){
       var sectionid = data.MediaContainer.$.librarySectionID;
@@ -456,6 +472,7 @@ function processMovie(rootaddr, url){
         var thumburl = video.$.thumb;
         var arturl = video.$.art;
         totalactions++;
+        console.log(chalk.bgBlue(" INFO ") + chalk.bold(" " + JSON.stringify(video)));
         async.each(video.Media, function(media, mediaitemcallback){
           if(!media.$.target){
             async.each(media.Part, function(part, partitemcallback){
@@ -718,7 +735,7 @@ function downloadfile(url, filepath){
     message: "",
     execute: function(callback){
 
-      request(url).pipe(fs.createWriteStream(filepath)).on('close', function(){
+      request(addToken(url)).pipe(fs.createWriteStream(filepath)).on('close', function(){
         callback();
       });
     }
@@ -727,7 +744,7 @@ function downloadfile(url, filepath){
 }
 
 function makeGetRequest(url, successcallback, errorcallback){
-  request(url, function(error, response, body){
+  request(addToken(url), function(error, response, body){
     if(!error && response.statusCode == 200){
       successcallback(response, body);
     }else{
@@ -745,7 +762,7 @@ function makeGetRequestDiscovery(url, successcallback, errorcallback){
   var task = {
     message: null,
     execute: function(callback){
-      request(url, function(error, response, body){
+      request(addToken(url), function(error, response, body){
         if(!error && response.statusCode == 200){
           successcallback(response, body);
           callback();
