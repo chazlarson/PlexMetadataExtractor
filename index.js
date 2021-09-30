@@ -468,11 +468,26 @@ function processMovie(rootaddr, url){
       var sectionid = data.MediaContainer.$.librarySectionID;
       async.each(data.MediaContainer.Video, function(video, itemcallback){
         var videokey = video.$.key;
-        var videotitle = video.title;
+        var videotitle = video.$.title;
         var thumburl = video.$.thumb;
         var arturl = video.$.art;
+
+        var videoyear = video.$.year;
+        var videosorttitle = 'titleSort' in video ? video.$.titleSort : videotitle;
+        var videoorigtitle = 'originalTitle' in video ? video.$.originalTitle : videotitle;
+        var videotagline = video.$.tagline;
+        var videosummary = video.$.summary;
+
+        var pmm_metadata = 'metadata:\n' +
+                           '  "' + videotitle + '":\n' +
+                           '    title: "' + videotitle + '"\n' +
+                           '    year: ' + videoyear + '\n' +
+                           '    sort_title: "' + videosorttitle + '"\n' +
+                           '    original_title: "' + videoorigtitle + '"\n' +
+                           '    tagline: "' + videotagline + '"\n' +
+                           '    summary: "' + videosummary + '"\n'
+                         
         totalactions++;
-        console.log(chalk.bgBlue(" INFO ") + chalk.bold(" " + JSON.stringify(video)));
         async.each(video.Media, function(media, mediaitemcallback){
           if(!media.$.target){
             async.each(media.Part, function(part, partitemcallback){
@@ -493,6 +508,7 @@ function processMovie(rootaddr, url){
                 }
               }
               if(libraries[sectionid].savethumbs){
+                pmm_metadata = pmm_metadata + '    file_poster: "' + path.join(parentpath, "poster.jpg") + '"\n'
                 if(!fs.existsSync(path.join(parentpath, "poster.jpg")) || libraries[sectionid].overwriteExisting){
                   downloadfile(rootaddr + thumburl, path.join(parentpath, "poster.jpg"));
                 }
@@ -503,10 +519,17 @@ function processMovie(rootaddr, url){
                 }
               }
               if(libraries[sectionid].savefolderart){
+                pmm_metadata = pmm_metadata + '    file_background: "' + path.join(parentpath, "art.jpg") + '"\n'
+
                 if(!fs.existsSync(path.join(parentpath, "art.jpg")) || libraries[sectionid].overwriteExisting){
                   downloadfile(rootaddr + arturl, path.join(parentpath, "art.jpg"));
                 }
               }
+              // write pmm-metadata.yml
+              fs.writeFile(path.join(parentpath, "pmm-metadata.yml"), pmm_metadata, (error) => {
+                  // In case of a error throw err exception.
+                  if (error) throw err;
+              })
               partitemcallback();
             });
           }
@@ -696,7 +719,6 @@ function downloadseriesassets(rootaddr, url, folderpath){
           if(!fs.existsSync(path.join(folderpath, "theme.mp3")) || libraries[librarySectionID].overwriteExisting){
             console.log(directory.$.theme);
             if(directory.$.theme !== undefined)
-
               downloadfile(rootaddr + directory.$.theme, path.join(folderpath, "theme.mp3"));
           }
         }
