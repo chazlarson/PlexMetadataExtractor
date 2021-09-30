@@ -16,3 +16,5 @@ Currently supports discovery of:
 No additional processing of xml is performed prior to it being saved.
 
 It is intended that this script be run on the PMS host, though sufficient configuration is provided to allow remote processing, you may run into problems where the PART path described by PMS is not accessible from the execution location.
+
+This fork adds plex token to allow connections, and writing out a Plex-Meta-Manager metadata.yml next to the movie file.  TV Series YML to come.
