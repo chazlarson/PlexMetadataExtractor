@@ -17,4 +17,22 @@ No additional processing of xml is performed prior to it being saved.
 
 It is intended that this script be run on the PMS host, though sufficient configuration is provided to allow remote processing, you may run into problems where the PART path described by PMS is not accessible from the execution location.
 
-This fork adds plex token to allow connections, and writing out a Plex-Meta-Manager metadata.yml next to the movie file.  TV Series YML to come.
+## This fork
+
+This fork adds plex token to allow connections, and writing out a Plex-Meta-Manager metadata.yml.  TV Series YML to come.
+
+Config:
+
+```
+{
+  "address": "IP OR FQDN",
+  "port": "###",
+  "protocol": "https",
+  "token": "YOUR_PLEX_TOKEN",
+  "metadataPath": "./metadata",      << Save the metadata here
+  "mediaBasePath": "/mnt/unionfs/"   << base path of your media
+}
+```
+
+The original script wrote all the metadata out to the same directory as tte media files.  My media is on a readonly filesystem, so I added the `metadataPath` and `mediaBasePath`.  The script will sub the first for the second in the mediapath, so `/mnt/unionfs/movies/4k/Zootopia (2016) {tmdb-269149}/poster.jpg` or the like will get written to `./metadata/movies/4k/Zootopia (2016) {tmdb-269149}/poster.jpg`.
+

@@ -60,6 +60,33 @@ var questions = {
       validate: function(input){
         return true;
       }
+    },
+    {
+      type: "input",
+      name: "metadataPath",
+      message: "Path to save metadata",
+      default: "./",
+      validate: function(input){
+        return true;
+      }
+    },
+    {
+      type: "input",
+      name: "mediaBasePath",
+      message: "Top level media dir",
+      default: "/mnt/unionfs/",
+      validate: function(input){
+        return true;
+      }
+    },
+    {
+      type: "input",
+      name: "protocol",
+      message: "protocol to use for URL",
+      default: "http",
+      validate: function(input){
+        return true;
+      }
     }
   ],
   libraryquestions: [
@@ -141,7 +168,6 @@ var questions = {
         return answers.processLibrary && answers.moviesinownfolder
       }
     }
-
   ],
   tvlibraryquestions: [
     {
@@ -367,7 +393,7 @@ function addToken(URL)
 }
 
 function doScrape(){
-  var rootaddr = "http://" + config.address + ":" + config.port;
+  var rootaddr = config.protocol + "://" + config.address + ":" + config.port;
 
   // http://[PMS_IP_Address]:32400/?X-Plex-Token=YourTokenGoesHere
 
@@ -479,54 +505,66 @@ function processMovie(rootaddr, url){
         var videosummary = video.$.summary;
 
         var pmm_metadata = 'metadata:\n' +
-                           '  "' + videotitle + '":\n' +
-                           '    title: "' + videotitle + '"\n' +
-                           '    year: ' + videoyear + '\n' +
-                           '    sort_title: "' + videosorttitle + '"\n' +
-                           '    original_title: "' + videoorigtitle + '"\n' +
-                           '    tagline: "' + videotagline + '"\n' +
-                           '    summary: "' + videosummary + '"\n'
-                         
+            '  "' + videotitle + '":\n' +
+            '    title: "' + videotitle + '"\n' +
+            '    year: ' + videoyear + '\n' +
+            '    sort_title: "' + videosorttitle + '"\n' +
+            '    original_title: "' + videoorigtitle + '"\n' +
+            '    tagline: "' + videotagline + '"\n' +
+            '    summary: "' + videosummary + '"\n'
+
         totalactions++;
         async.each(video.Media, function(media, mediaitemcallback){
           if(!media.$.target){
             async.each(media.Part, function(part, partitemcallback){
               var parentpath = path.dirname(part.$.file)
+
+              var targetpath = part.$.file;
+              var targetparent = parentpath;
+
+              if(config.mediaBasePath != ''){
+                if(config.metadataPath != ''){
+                  targetpath = part.$.file.replace(config.mediaBasePath, config.metadataPath);
+                  targetparent = path.dirname(targetpath);
+                  fs.mkdirSync(targetparent, { recursive: true })
+                }
+              }
+
               if(libraries[sectionid].savemeta){
-                if(!fs.existsSync(part.$.file + ".meta.xml") || libraries[sectionid].overwriteExisting){
-                  downloadmetadata(rootaddr + videokey, part.$.file + ".meta.xml");
+                if(!fs.existsSync(targetpath + ".meta.xml") || libraries[sectionid].overwriteExisting){
+                  downloadmetadata(rootaddr + videokey, targetpath + ".meta.xml");
                 }
               }
               if(libraries[sectionid].savethumbs){
-                if(!fs.existsSync(part.$.file + ".thumb.jpg") || libraries[sectionid].overwriteExisting){
-                  downloadfile(rootaddr + thumburl, part.$.file + ".thumb.jpg");
+                if(!fs.existsSync(targetpath + ".thumb.jpg") || libraries[sectionid].overwriteExisting){
+                  downloadfile(rootaddr + thumburl, targetpath + ".thumb.jpg");
                 }
               }
               if(libraries[sectionid].savethumbs){
                 if(!fs.existsSync("folder.jpg") || libraries[sectionid].overwriteExisting){
-                  downloadfile(rootaddr + thumburl, path.join(parentpath, "folder.jpg"));
+                  downloadfile(rootaddr + thumburl, path.join(targetparent, "folder.jpg"));
                 }
               }
               if(libraries[sectionid].savethumbs){
-                pmm_metadata = pmm_metadata + '    file_poster: "' + path.join(parentpath, "poster.jpg") + '"\n'
-                if(!fs.existsSync(path.join(parentpath, "poster.jpg")) || libraries[sectionid].overwriteExisting){
-                  downloadfile(rootaddr + thumburl, path.join(parentpath, "poster.jpg"));
+                pmm_metadata = pmm_metadata + '    file_poster: "' + path.join(targetparent, "poster.jpg") + '"\n'
+                if(!fs.existsSync(path.join(targetparent, "poster.jpg")) || libraries[sectionid].overwriteExisting){
+                  downloadfile(rootaddr + thumburl, path.join(targetparent, "poster.jpg"));
                 }
               }
               if(libraries[sectionid].saveart){
-                if(!fs.existsSync(part.$.file + '.art.jpg') || libraries[sectionid].overwriteExisting){
-                  downloadfile(rootaddr + arturl, part.$.file + ".art.jpg");
+                if(!fs.existsSync(targetpath + '.art.jpg') || libraries[sectionid].overwriteExisting){
+                  downloadfile(rootaddr + arturl, targetpath + ".art.jpg");
                 }
               }
               if(libraries[sectionid].savefolderart){
-                pmm_metadata = pmm_metadata + '    file_background: "' + path.join(parentpath, "art.jpg") + '"\n'
+                pmm_metadata = pmm_metadata + '    file_background: "' + path.join(targetparent, "art.jpg") + '"\n'
 
-                if(!fs.existsSync(path.join(parentpath, "art.jpg")) || libraries[sectionid].overwriteExisting){
-                  downloadfile(rootaddr + arturl, path.join(parentpath, "art.jpg"));
+                if(!fs.existsSync(path.join(targetparent, "art.jpg")) || libraries[sectionid].overwriteExisting){
+                  downloadfile(rootaddr + arturl, path.join(targetparent, "art.jpg"));
                 }
               }
               // write pmm-metadata.yml
-              fs.writeFile(path.join(parentpath, "pmm-metadata.yml"), pmm_metadata, (error) => {
+              fs.writeFile(path.join(targetparent, "pmm-metadata.yml"), pmm_metadata, (error) => {
                   // In case of a error throw err exception.
                   if (error) throw err;
               })
@@ -561,7 +599,6 @@ function processSeries(rootaddr, url){
     });
   });
 }
-
 function processSeason(rootaddr, url){
   makeGetRequestDiscovery(rootaddr + url, function(request, body){
     parseString(body, function(error, data){
@@ -634,7 +671,6 @@ function processSeason(rootaddr, url){
     });
   });
 }
-
 function downloadseasonassets(rootaddr, url, folderpath){
   makeGetRequestDiscovery(rootaddr + url, function(request, body){
     parseString(body, function(error, data){
@@ -733,6 +769,7 @@ function downloadmetadata(url, filepath){
     execute: function(callback){
       request(url, function(error, response, body){
         if(!error && response.statusCode == 200){
+          console.log("writing " + filepath);
           fs.writeFile(filepath, body);
           callback();
         }else{
@@ -774,6 +811,7 @@ function makeGetRequest(url, successcallback, errorcallback){
         if(errorcallback)
           errorcallback(error);
       }else{
+        console.log(chalk.bgBlue(" INFO ") + chalk.bold(response.statusCode + " from " + url ));
         // TODO: process additional response codes
       }
     }
