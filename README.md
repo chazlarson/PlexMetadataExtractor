@@ -34,5 +34,4 @@ Config:
 }
 ```
 
-The original script wrote all the metadata out to the same directory as tte media files.  My media is on a readonly filesystem, so I added the `metadataPath` and `mediaBasePath`.  The script will sub the first for the second in the mediapath, so `/mnt/unionfs/movies/4k/Zootopia (2016) {tmdb-269149}/poster.jpg` or the like will get written to `./metadata/movies/4k/Zootopia (2016) {tmdb-269149}/poster.jpg`.
-
+The original script wrote all the metadata out to the same directory as the media files.  My media is on a readonly filesystem, so I added the `metadataPath` and `mediaBasePath`.  The script will sub the first for the second in the mediapath, so all the files that woudol normally get written to the media dir will go into a mirror filesystem rooted at `metadataPath`.
