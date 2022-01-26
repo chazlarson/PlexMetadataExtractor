@@ -108,7 +108,7 @@ var questions = {
     {
       type: "confirm",
       name: "savemeta",
-      message: "Save metadata alongside each media file?",
+      message: "Save metadata file?",
       default: true,
       when: function(answers){
         return answers.processLibrary;
@@ -117,7 +117,7 @@ var questions = {
     {
       type: "confirm",
       name: "savethumbs",
-      message: "Save thumbnail alongside each media file?",
+      message: "Save thumbnail image?",
       default: true,
       when: function(answers){
         return answers.processLibrary;
@@ -128,7 +128,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveart",
-      message: "Save artwork alongside each media file?",
+      message: "Save artwork?",
       default: true,
       when: function(answers){
         return answers.processLibrary;
@@ -146,7 +146,7 @@ var questions = {
     {
       type: "confirm",
       name: "savefolderposter",
-      message: "Save poster.jpg from thumbnail into containing folder?",
+      message: "Save poster.jpg from thumbnail?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.moviesinownfolder
@@ -155,7 +155,7 @@ var questions = {
     {
       type: "confirm",
       name: "savefolderthumb",
-      message: "Save folder.jpg from thumbnail into containing folder?",
+      message: "Save folder.jpg from thumbnail?",
       when: function(answers){
         return answers.processLibrary && answers.moviesinownfolder
       }
@@ -163,7 +163,7 @@ var questions = {
     {
       type: "confirm",
       name: "savefolderart",
-      message: "Save art.jpg from artwork into containing folder?",
+      message: "Save art.jpg from artwork?",
       when: function(answers){
         return answers.processLibrary && answers.moviesinownfolder
       }
@@ -182,7 +182,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesmeta",
-      message: "Save metadata for series into the Series folder?",
+      message: "Save metadata for series?",
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
       }
@@ -190,7 +190,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesposter",
-      message: "Save show.jpg from thumbnail into the Series folder?",
+      message: "Save show.jpg from thumbnail?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -199,7 +199,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesfolderthumb",
-      message: "Save folder.jpg from thumbnail into the Series folder?",
+      message: "Save folder.jpg from thumbnail?",
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
       }
@@ -207,7 +207,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesfolderart",
-      message: "Save art.jpg from artwork into the Series folder?",
+      message: "Save art.jpg from artwork?",
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
       }
@@ -215,7 +215,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriesbanner",
-      message: "Save banner.jpg for into the Series folder?",
+      message: "Save banner.jpg?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -224,7 +224,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseriestheme",
-      message: "Save theme.mp3 for into the Series folder?",
+      message: "Save theme.mp3?",
       default: true,
       when: function(answers){
         return answers.processLibrary && answers.tvseriesinownfolder;
@@ -269,7 +269,7 @@ var questions = {
     {
       type: "confirm",
       name: "saveseasonfolderthumb",
-      message: "Save folder.jpg from thumbnail into the Season folder?",
+      message: "Save folder.jpg from thumbnail for seasons?",
       when: function(answers){
         return answers.processLibrary && answers.tvseasonsinownfolder;
       }
