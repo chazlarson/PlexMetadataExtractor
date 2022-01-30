@@ -421,6 +421,7 @@ function doScrape(){
           }
           inquirer.prompt(thislibquestions, function(answers){
             libraries[lib.key] = answers;
+            libraries[lib.key]["name"] = lib.title;
             itemcallback();
           });
         }else{
